@@ -1,6 +1,7 @@
 import Parser from "rss-parser";
 import "dotenv/config";
-let parser = new Parser({
+
+const rssParser = new Parser({
   customFields: {
     item: [
       ["letterboxd:watchedDate", "watchedDate"],
@@ -11,33 +12,32 @@ let parser = new Parser({
   },
 });
 
-async function getMoviesToAdd(lastUpdatedTmdb) {
-  let feed = await parser.parseURL(process.env.LETTERBOXD_FEED_URL);
+async function getNewWatchedMovies(lastSyncedTmdbId) {
+  const feed = await rssParser.parseURL(process.env.LETTERBOXD_FEED_URL);
   console.log(feed.title);
 
-  let latestMovies = [];
-  console.log(lastUpdatedTmdb);
-  for (let i = 0; i < feed.items.length; i++) {
-    if (
-      feed.items[i].tmdbMovieId &&
-      Number(feed.items[i].tmdbMovieId) === lastUpdatedTmdb
-    ) {
+  const watchedSinceLastSync = [];
+  console.log(lastSyncedTmdbId);
+  for (const item of feed.items) {
+    if (item.tmdbMovieId && Number(item.tmdbMovieId) === lastSyncedTmdbId) {
       break;
     }
-    latestMovies.push(feed.items[i]);
+    watchedSinceLastSync.push(item);
   }
 
-  const moviesToAdd = latestMovies.filter((item) => item.rewatch === "No");
-  if (moviesToAdd.length === 0) {
+  const newWatches = watchedSinceLastSync.filter(
+    (item) => item.rewatch === "No",
+  );
+  if (newWatches.length === 0) {
     return [];
   }
 
-  return moviesToAdd.map((item) => {
-    let { watchedDate, rewatch, memberLike, tmdbMovieId } = item;
+  return newWatches.map((item) => {
+    const { watchedDate, rewatch, memberLike, tmdbMovieId } = item;
     return { watchedDate, rewatch, memberLike, tmdbMovieId };
   });
 }
 
-const letterboxd = { getMoviesToAdd };
+const letterboxd = { getNewWatchedMovies };
 
 export default letterboxd;

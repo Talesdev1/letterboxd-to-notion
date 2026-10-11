@@ -1,20 +1,23 @@
 import { Client } from "@notionhq/client";
 import "dotenv/config";
 
-const data_source_id = process.env.NOTION_DATA_SOURCE_ID;
+const dataSourceId = process.env.NOTION_DATA_SOURCE_ID;
 
-const token = process.env.NOTION_API_KEY;
+const notionToken = process.env.NOTION_API_KEY;
 
-const notion = new Client({ auth: token, notionVersion: "2025-09-03" });
+const notionClient = new Client({
+  auth: notionToken,
+  notionVersion: "2025-09-03",
+});
 
 async function retrieveDataSourceProperties() {
-  const response = await notion.dataSources.retrieve({
-    data_source_id: data_source_id,
+  const response = await notionClient.dataSources.retrieve({
+    data_source_id: dataSourceId,
   });
   return response;
 }
 
-async function getLastUpdatedTmdb() {
+async function getLastSyncedTmdbId() {
   return (
     await retrievePageProperty(
       process.env.NOTION_PAGE_METADATA_ID,
@@ -23,8 +26,8 @@ async function getLastUpdatedTmdb() {
   ).number;
 }
 
-async function updateLastUpdatedTmdb(tmdbId) {
-  let properties = {
+async function updateLastSyncedTmdbId(tmdbId) {
+  const properties = {
     tmdbId: {
       number: Number(tmdbId),
     },
@@ -32,83 +35,83 @@ async function updateLastUpdatedTmdb(tmdbId) {
   await updatePage(process.env.NOTION_PAGE_METADATA_ID, properties);
 }
 
-async function retrievePageProperty(pageId, property_id) {
-  const response = await notion.pages.properties.retrieve({
+async function retrievePageProperty(pageId, propertyId) {
+  const response = await notionClient.pages.properties.retrieve({
     page_id: pageId,
-    property_id,
+    property_id: propertyId,
   });
   return response;
 }
 
 async function updatePage(pageId, properties) {
-  const response = await notion.pages.update({
+  const response = await notionClient.pages.update({
     page_id: pageId,
     properties,
   });
   return response;
 }
 
-async function createPage(movie_info) {
-  const response = await notion.pages.create({
+async function createMoviePage(movieInfo) {
+  const response = await notionClient.pages.create({
     parent: {
       type: "data_source_id",
-      data_source_id: process.env.NOTION_DATA_SOURCE_ID,
+      data_source_id: dataSourceId,
     },
     properties: {
       Name: {
         title: [
           {
             text: {
-              content: movie_info.titulo,
+              content: movieInfo.titulo,
             },
           },
         ],
       },
       "Título original": {
-        rich_text: [{ text: { content: movie_info.titulo_original } }],
+        rich_text: [{ text: { content: movieInfo.titulo_original } }],
       },
       "Título nacional": {
-        rich_text: [{ text: { content: movie_info.titulo_nacional } }],
+        rich_text: [{ text: { content: movieInfo.titulo_nacional } }],
       },
       Status: {
         select: {
-          name: movie_info.status,
+          name: movieInfo.status,
         },
       },
       "Assistiria novamente?": {
         select: {
-          name: movie_info.assistiria_novamente,
+          name: movieInfo.assistiria_novamente,
         },
       },
       Diretor: {
-        multi_select: movie_info.diretor.map((diretor) => {
-          return { name: diretor };
+        multi_select: movieInfo.diretor.map((director) => {
+          return { name: director };
         }),
       },
       Musica: {
-        multi_select: movie_info.musica.map((crewMember) => {
+        multi_select: movieInfo.musica.map((crewMember) => {
           return { name: crewMember };
         }),
       },
       Gênero: {
-        multi_select: movie_info.generos.map((genre) => {
+        multi_select: movieInfo.generos.map((genre) => {
           return { name: genre };
         }),
       },
       Lancamento: {
-        number: Number(movie_info.lancamento),
+        number: Number(movieInfo.lancamento),
       },
       tmdb: {
-        url: movie_info.tmdb,
+        url: movieInfo.tmdb,
       },
       "Assistido em": {
-        date: { start: movie_info.assistido_em, end: null, time_zone: null },
+        date: { start: movieInfo.assistido_em, end: null, time_zone: null },
       },
     },
   });
   return response;
 }
 
-const oper = { createPage, getLastUpdatedTmdb, updateLastUpdatedTmdb };
+const notion = { createMoviePage, getLastSyncedTmdbId, updateLastSyncedTmdbId };
 
-export default oper;
+export default notion;

@@ -1,53 +1,56 @@
 import letterboxd from "./letterboxd.js";
 import tmdb from "./tmdb.js";
-import oper from "./notion.js";
+import notion from "./notion.js";
 
-function getThesePropertiesOnlyFactory(item) {
-  return function getThesePropertiesOnly(json) {
+function createMovieMapper(letterboxdEntry) {
+  return function mapMovieData(movieData) {
     return {
-      titulo: json.title,
-      titulo_original: json.original_title,
-      titulo_nacional: json.translations.translations.filter(
-        (transl) => transl.iso_3166_1 === "BR",
-      )[0]?.data.title || "",
-      diretor: json.credits.crew
-        .filter((crew_member) => crew_member.job === "Director")
+      titulo: movieData.title,
+      titulo_original: movieData.original_title,
+      titulo_nacional:
+        movieData.translations.translations.filter(
+          (translation) => translation.iso_3166_1 === "BR",
+        )[0]?.data.title || "",
+      diretor: movieData.credits.crew
+        .filter((crewMember) => crewMember.job === "Director")
         .map((crewMember) => crewMember.name),
-      musica: json.credits.crew
+      musica: movieData.credits.crew
         .filter((crewMember) => crewMember.job === "Original Music Composer")
         .map((crewMember) => crewMember.name),
-      generos: json.genres.map((genre) => genre.name),
-      lancamento: json.release_date.split("-")[0],
-      assistido_em: item.watchedDate,
-      assistiria_novamente: item.memberLike === "Yes" ? "Sim" : "Não",
+      generos: movieData.genres.map((genre) => genre.name),
+      lancamento: movieData.release_date.split("-")[0],
+      assistido_em: letterboxdEntry.watchedDate,
+      assistiria_novamente:
+        letterboxdEntry.memberLike === "Yes" ? "Sim" : "Não",
+      cinema: null,
       status: "Done",
-      tmdb: `https://www.themoviedb.org/movie/${json.id}`,
+      tmdb: `https://www.themoviedb.org/movie/${movieData.id}`,
     };
   };
 }
 
 async function main() {
-  let lastUpdatedTmdb = await oper.getLastUpdatedTmdb();
+  let lastSyncedTmdbId = await notion.getLastSyncedTmdbId();
 
-  let moviesToAdd = await letterboxd.getMoviesToAdd(lastUpdatedTmdb);
-  console.log(moviesToAdd);
+  const newWatches = await letterboxd.getNewWatchedMovies(lastSyncedTmdbId);
+  console.log(newWatches);
 
-  if (moviesToAdd.length === 0) return;
-  for (const item of moviesToAdd.reverse()) {
+  if (newWatches.length === 0) return;
+  for (const letterboxdEntry of newWatches.reverse()) {
     try {
-      let movie = await tmdb.getMovieById(
-        item.tmdbMovieId,
-        getThesePropertiesOnlyFactory(item),
+      const movie = await tmdb.getMovieById(
+        letterboxdEntry.tmdbMovieId,
+        createMovieMapper(letterboxdEntry),
       );
-      await oper.createPage(movie);
-      lastUpdatedTmdb = item.tmdbMovieId;
+      await notion.createMoviePage(movie);
+      lastSyncedTmdbId = letterboxdEntry.tmdbMovieId;
     } catch (error) {
-      await oper.updateLastUpdatedTmdb(lastUpdatedTmdb);
+      await notion.updateLastSyncedTmdbId(lastSyncedTmdbId);
       throw error;
     }
   }
-  console.log("updateLastUpdatedTmdb");
-  await oper.updateLastUpdatedTmdb(lastUpdatedTmdb);
+  console.log("updateLastSyncedTmdbId");
+  await notion.updateLastSyncedTmdbId(lastSyncedTmdbId);
 }
 
 main();
