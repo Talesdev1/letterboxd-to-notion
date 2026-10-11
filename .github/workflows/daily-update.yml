@@ -1,0 +1,39 @@
+name: Daily Notion update
+
+on:
+  schedule:
+    # Every day at 06:00 UTC.
+    - cron: "0 6 * * *"
+  # Allows triggering the sync manually from the Actions tab.
+  workflow_dispatch:
+
+# Prevent overlapping runs if a previous sync is still in progress.
+concurrency:
+  group: daily-notion-update
+  cancel-in-progress: false
+
+jobs:
+  update-notion:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 26
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Sync Letterboxd watches to Notion
+        run: npm run update-notion
+        env:
+          NOTION_API_KEY: ${{ secrets.NOTION_API_KEY }}
+          NOTION_DATA_SOURCE_ID: ${{ secrets.NOTION_DATA_SOURCE_ID }}
+          NOTION_PAGE_METADATA_ID: ${{ secrets.NOTION_PAGE_METADATA_ID }}
+          NOTION_PAGE_METADATA_PROPERTY_ID: ${{ secrets.NOTION_PAGE_METADATA_PROPERTY_ID }}
+          LETTERBOXD_FEED_URL: ${{ secrets.LETTERBOXD_FEED_URL }}
+          TMDB_API_KEY: ${{ secrets.TMDB_API_KEY }}
