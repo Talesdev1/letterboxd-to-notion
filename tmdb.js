@@ -31,7 +31,6 @@ function mapMovieToFields(movieData) {
 }
 
 async function getMovieById(movieId, mapMovie = mapMovieToFields) {
-  console.log(movieId);
   const url = `https://api.themoviedb.org/3/movie/${movieId}?language=en-US&append_to_response=credits,translations`;
   const options = {
     method: "GET",

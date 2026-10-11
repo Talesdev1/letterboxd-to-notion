@@ -14,10 +14,8 @@ const rssParser = new Parser({
 
 async function getNewWatchedMovies(lastSyncedTmdbId) {
   const feed = await rssParser.parseURL(process.env.LETTERBOXD_FEED_URL);
-  console.log(feed.title);
 
   const watchedSinceLastSync = [];
-  console.log(lastSyncedTmdbId);
   for (const item of feed.items) {
     if (item.tmdbMovieId && Number(item.tmdbMovieId) === lastSyncedTmdbId) {
       break;

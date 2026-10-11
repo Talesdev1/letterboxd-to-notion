@@ -33,9 +33,13 @@ async function main() {
   let lastSyncedTmdbId = await notion.getLastSyncedTmdbId();
 
   const newWatches = await letterboxd.getNewWatchedMovies(lastSyncedTmdbId);
-  console.log(newWatches);
 
-  if (newWatches.length === 0) return;
+  if (newWatches.length === 0) {
+    console.log("No new movies to add.");
+    return;
+  }
+
+  console.log(`Adding ${newWatches.length} new movie(s)...`);
   for (const letterboxdEntry of newWatches.reverse()) {
     try {
       const movie = await tmdb.getMovieById(
@@ -44,12 +48,18 @@ async function main() {
       );
       await notion.createMoviePage(movie);
       lastSyncedTmdbId = letterboxdEntry.tmdbMovieId;
+      console.log(
+        `Added "${movie.titulo}" (tmdb:${letterboxdEntry.tmdbMovieId}, watched on ${letterboxdEntry.watchedDate}).`,
+      );
     } catch (error) {
+      console.error(
+        `Failed to add movie (tmdb:${letterboxdEntry.tmdbMovieId}):`,
+        error.message,
+      );
       await notion.updateLastSyncedTmdbId(lastSyncedTmdbId);
       throw error;
     }
   }
-  console.log("updateLastSyncedTmdbId");
   await notion.updateLastSyncedTmdbId(lastSyncedTmdbId);
 }
 
